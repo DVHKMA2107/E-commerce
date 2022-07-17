@@ -1,5 +1,5 @@
 import mongoose from 'mongoose'
-import { env } from '../config/environment.js'
+import { env } from './environment.js'
 
 export const connectDB = () => {
   mongoose
@@ -10,8 +10,5 @@ export const connectDB = () => {
     })
     .then((data) => {
       console.log(`Mongodb is connected with server: ${data.connection.host}`)
-    })
-    .catch((err) => {
-      console.log(err)
     })
 }
