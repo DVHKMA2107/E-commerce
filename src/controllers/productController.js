@@ -1,6 +1,7 @@
 import { ProductModel } from '../models/productModel.js'
 import ErrorHander from '../utils/errorHander.js'
 import catchAsyncError from '../middlewares/catchAsyncError.js'
+import ApiFeatures from '../utils/apiFeature.js'
 
 // create product
 export const createProduct = catchAsyncError(async (req, res, next) => {
@@ -14,10 +15,20 @@ export const createProduct = catchAsyncError(async (req, res, next) => {
 // get all product
 
 export const getAllProducts = catchAsyncError(async (req, res) => {
-  const products = await ProductModel.find()
+  const resultPerPage = 5
+  const productCount = await ProductModel.countDocuments()
+  // Query if you don't pass a callback function or .then or await, just return a query
+  const apiFeature = new ApiFeatures(ProductModel.find(), req.query)
+    .search()
+    .filter()
+    .pagination(resultPerPage)
+
+  const products = await apiFeature.query
+
   res.status(200).json({
     success: true,
     products,
+    productCount,
   })
 })
 
