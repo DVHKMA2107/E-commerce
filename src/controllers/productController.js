@@ -5,6 +5,7 @@ import ApiFeatures from '../utils/apiFeature.js'
 
 // create product
 export const createProduct = catchAsyncError(async (req, res, next) => {
+  req.body.user = req.user.id
   const product = await ProductModel.create(req.body)
   res.status(200).json({
     success: true,

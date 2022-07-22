@@ -3,6 +3,7 @@ import { env } from './config/environment.js'
 import { apiV1 } from './routes/index.js'
 import { connectDB } from './config/mongodb.js'
 import { errorMiddleware } from './middlewares/error.js'
+import cookieParser from 'cookie-parser'
 
 //Handling Uncaught Exception
 process.on('uncaughtException', (err) => {
@@ -15,6 +16,7 @@ connectDB()
 const app = express()
 
 app.use(express.json())
+app.use(cookieParser())
 
 app.use('/api/v1', apiV1)
 
