@@ -5,6 +5,7 @@ import { UserModel } from '../models/userModel.js'
 import { sendToken } from '../utils/jwtToken.js'
 import { sendEmail } from '../utils/sendEmail.js'
 
+// User Register
 export const userRegister = catchAsyncError(async (req, res, next) => {
   const { name, email, password } = req.body
 
@@ -21,6 +22,7 @@ export const userRegister = catchAsyncError(async (req, res, next) => {
   sendToken(201, user, res)
 })
 
+// Login User
 export const loginUser = catchAsyncError(async (req, res, next) => {
   const { email, password } = req.body
 
@@ -55,6 +57,7 @@ export const logoutUser = catchAsyncError(async (req, res, next) => {
   })
 })
 
+// Forgot Password
 export const forgotPassword = catchAsyncError(async (req, res, next) => {
   const user = await UserModel.findOne({ email: req.body.email })
 
@@ -93,6 +96,7 @@ export const forgotPassword = catchAsyncError(async (req, res, next) => {
   }
 })
 
+// Reset Pasword
 export const resetPassword = catchAsyncError(async (req, res, next) => {
   const resetPasswordToken = crypto
     .createHash('sha256')
@@ -126,4 +130,114 @@ export const resetPassword = catchAsyncError(async (req, res, next) => {
   await user.save()
 
   sendToken(200, user, res)
+})
+
+// Get User Detail
+export const getUserDetail = catchAsyncError(async (req, res, next) => {
+  const user = await UserModel.findById(req.user.id)
+
+  res.status(200).json({
+    success: true,
+    user,
+  })
+})
+
+// Update Password
+export const updatePassword = catchAsyncError(async (req, res, next) => {
+  const user = await UserModel.findById(req.user.id).select('+password')
+
+  const isPasswordMatched = await user.comparePassword(req.body.oldPassword)
+
+  if (!isPasswordMatched) {
+    return next(new ErrorHander('Old password is incorrect', 400))
+  }
+
+  if (req.body.newPassword !== req.body.confirmPassword) {
+    return next(new ErrorHander('Password does not match', 400))
+  }
+
+  user.password = req.body.newPassword
+
+  await user.save()
+
+  sendToken(200, user, res)
+})
+
+// Update User Profile
+export const updateUserProfile = catchAsyncError(async (req, res, next) => {
+  const newUserData = {
+    name: req.body.name,
+    email: req.body.email,
+  }
+
+  const user = await UserModel.findByIdAndUpdate(req.user.id, newUserData, {
+    new: true,
+    runValidators: true,
+    useFindAndModify: false,
+  })
+
+  res.status(200).json({
+    success: true,
+  })
+})
+
+// Get All User -- Admin
+export const getAllUser = catchAsyncError(async (req, res, next) => {
+  const users = await UserModel.find()
+
+  res.status(200).json({
+    success: true,
+    users,
+  })
+})
+
+//Get Single User
+export const getSingleUser = catchAsyncError(async (req, res, next) => {
+  const user = await UserModel.findById(req.params.id)
+
+  if (!user) {
+    return next(new ErrorHander(`User does not exit with id: ${req.params.id}`))
+  }
+
+  res.status(200).json({
+    success: true,
+    user,
+  })
+})
+
+// Update User Role
+export const updateUserRole = catchAsyncError(async (req, res, next) => {
+  const newUserData = {
+    email: req.body.email,
+    name: req.body.name,
+    role: req.body.role,
+  }
+
+  const user = await UserModel.findByIdAndUpdate(req.params.id, newUserData, {
+    new: true,
+    runValidators: true,
+    useFindAndModify: false,
+  })
+
+  res.status(200).json({
+    success: true,
+  })
+})
+
+// Delete User -- Admin
+export const deleteUser = catchAsyncError(async (req, res, next) => {
+  const user = await UserModel.findById(req.params.id)
+
+  if (!user) {
+    return next(
+      new ErrorHander(`User does not exist with Id: ${req.params.id}`)
+    )
+  }
+
+  await user.remove()
+
+  res.status(200).json({
+    success: true,
+    message: 'Delete User successfully',
+  })
 })
