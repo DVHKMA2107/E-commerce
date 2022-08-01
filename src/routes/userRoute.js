@@ -39,7 +39,7 @@ router
   .get(isAuthenticated, authorizeRole('admin'), getAllUser)
 
 router
-  .route('/admin/:id')
+  .route('/admin/user/:id')
   .get(isAuthenticated, authorizeRole('admin'), getSingleUser)
   .put(isAuthenticated, authorizeRole('admin'), updateUserRole)
   .delete(isAuthenticated, authorizeRole('admin'), deleteUser)

@@ -71,7 +71,7 @@ export const forgotPassword = catchAsyncError(async (req, res, next) => {
 
   const resetPasswordUrl = `${req.protocol}://${req.get(
     'host'
-  )}/api/v1/user/password/reset/${resetToken}`
+  )}/api/v1/password/reset/${resetToken}`
 
   const message = `Your password reset token is: - \n\n${resetPasswordUrl} \n\nIf you not requested this email then, please ignore it.`
 
@@ -144,7 +144,7 @@ export const getUserDetail = catchAsyncError(async (req, res, next) => {
 
 // Update Password
 export const updatePassword = catchAsyncError(async (req, res, next) => {
-  const user = await UserModel.findById(req.user.id).select('+password')
+  let user = await UserModel.findById(req.user.id).select('+password')
 
   const isPasswordMatched = await user.comparePassword(req.body.oldPassword)
 
@@ -212,6 +212,7 @@ export const updateUserRole = catchAsyncError(async (req, res, next) => {
     name: req.body.name,
     role: req.body.role,
   }
+  console.log(newUserData)
 
   const user = await UserModel.findByIdAndUpdate(req.params.id, newUserData, {
     new: true,

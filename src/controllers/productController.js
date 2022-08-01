@@ -35,7 +35,6 @@ export const getAllProducts = catchAsyncError(async (req, res) => {
 
 //get detail product
 export const getProductDetail = catchAsyncError(async (req, res, next) => {
-  console.log('running...')
   const product = await ProductModel.findById(req.params.id)
 
   if (!product) {
@@ -154,9 +153,14 @@ export const deleteReview = catchAsyncError(async (req, res, next) => {
   )
 
   let avg = 0
-  const rating =
-    reviews.reduce((prevValue, curValue) => curValue.rating + prevValue, avg) /
-    reviews.length
+  let rating = 0
+  if (reviews.length !== 0) {
+    rating =
+      reviews.reduce(
+        (prevValue, curValue) => curValue.rating + prevValue,
+        avg
+      ) / reviews.length
+  }
 
   const numOfReviews = reviews.length
 
