@@ -1,12 +1,20 @@
-import crypto from 'crypto'
-import ErrorHander from '../utils/errorHander.js'
-import catchAsyncError from '../middlewares/catchAsyncError.js'
-import { UserModel } from '../models/userModel.js'
-import { sendToken } from '../utils/jwtToken.js'
-import { sendEmail } from '../utils/sendEmail.js'
+import crypto from "crypto"
+import cloudinary from "cloudinary"
+import ErrorHander from "../utils/errorHander.js"
+import catchAsyncError from "../middlewares/catchAsyncError.js"
+import { env } from "../config/environment.js"
+import { UserModel } from "../models/userModel.js"
+import { sendToken } from "../utils/jwtToken.js"
+import { sendEmail } from "../utils/sendEmail.js"
 
 // User Register
 export const userRegister = catchAsyncError(async (req, res, next) => {
+  const myCloud = await cloudinary.v2.uploader.upload(req.body.avatar, {
+    folders: "avatars",
+    width: 150,
+    crop: "scale",
+  })
+
   const { name, email, password } = req.body
 
   const user = await UserModel.create({
@@ -14,8 +22,8 @@ export const userRegister = catchAsyncError(async (req, res, next) => {
     email,
     password,
     avatar: {
-      public_id: 'This is sample id',
-      url: 'profilepicUrl',
+      public_id: myCloud.public_id,
+      url: myCloud.secure_url,
     },
   })
 
@@ -27,33 +35,33 @@ export const loginUser = catchAsyncError(async (req, res, next) => {
   const { email, password } = req.body
 
   if (!email || !password) {
-    return next(new ErrorHander('Please enter email & password', 400))
+    return next(new ErrorHander("Please enter email & password", 400))
   }
 
-  const user = await UserModel.findOne({ email }).select('+password')
+  const user = await UserModel.findOne({ email }).select("+password")
 
   if (!user) {
-    return next(new ErrorHander('Invalid email or password', 401))
+    return next(new ErrorHander("Invalid email or password", 401))
   }
 
   const isPasswordMatched = await user.comparePassword(password)
 
   if (!isPasswordMatched) {
-    return next(new ErrorHander('Invalid email or password', 401))
+    return next(new ErrorHander("Invalid email or password", 401))
   }
 
   sendToken(200, user, res)
 })
 
 export const logoutUser = catchAsyncError(async (req, res, next) => {
-  res.cookie('token', null, {
+  res.cookie("token", null, {
     expires: new Date(Date.now()),
     httpOnly: true,
   })
 
   res.status(200).json({
     success: true,
-    message: 'Logout',
+    message: "Logout",
   })
 })
 
@@ -62,16 +70,14 @@ export const forgotPassword = catchAsyncError(async (req, res, next) => {
   const user = await UserModel.findOne({ email: req.body.email })
 
   if (!user) {
-    return next(new ErrorHander('User not found', 404))
+    return next(new ErrorHander("User not found", 404))
   }
 
   const resetToken = user.getResetPasswordToken()
 
   await user.save({ validateBeforeSave: false })
 
-  const resetPasswordUrl = `${req.protocol}://${req.get(
-    'host'
-  )}/api/v1/password/reset/${resetToken}`
+  const resetPasswordUrl = `${env.FRONT_END_URL}/password/reset/${resetToken}`
 
   const message = `Your password reset token is: - \n\n${resetPasswordUrl} \n\nIf you not requested this email then, please ignore it.`
 
@@ -99,9 +105,9 @@ export const forgotPassword = catchAsyncError(async (req, res, next) => {
 // Reset Pasword
 export const resetPassword = catchAsyncError(async (req, res, next) => {
   const resetPasswordToken = crypto
-    .createHash('sha256')
+    .createHash("sha256")
     .update(req.params.token)
-    .digest('hex')
+    .digest("hex")
 
   const user = await UserModel.findOne({
     resetPasswordToken,
@@ -111,7 +117,7 @@ export const resetPassword = catchAsyncError(async (req, res, next) => {
   if (!user) {
     return next(
       new ErrorHander(
-        'Reset Password Token is invalid or has been expired',
+        "Reset Password Token is invalid or has been expired",
         400
       )
     )
@@ -119,7 +125,7 @@ export const resetPassword = catchAsyncError(async (req, res, next) => {
 
   if (req.body.password !== req.body.confirmPassword) {
     return next(
-      new ErrorHander('Password does not match confirm Password', 400)
+      new ErrorHander("Password does not match confirm Password", 400)
     )
   }
 
@@ -144,16 +150,16 @@ export const getUserDetail = catchAsyncError(async (req, res, next) => {
 
 // Update Password
 export const updatePassword = catchAsyncError(async (req, res, next) => {
-  let user = await UserModel.findById(req.user.id).select('+password')
+  let user = await UserModel.findById(req.user.id).select("+password")
 
   const isPasswordMatched = await user.comparePassword(req.body.oldPassword)
 
   if (!isPasswordMatched) {
-    return next(new ErrorHander('Old password is incorrect', 400))
+    return next(new ErrorHander("Old password is incorrect", 400))
   }
 
   if (req.body.newPassword !== req.body.confirmPassword) {
-    return next(new ErrorHander('Password does not match', 400))
+    return next(new ErrorHander("Password does not match", 400))
   }
 
   user.password = req.body.newPassword
@@ -168,6 +174,25 @@ export const updateUserProfile = catchAsyncError(async (req, res, next) => {
   const newUserData = {
     name: req.body.name,
     email: req.body.email,
+  }
+
+  if (req.body.avatar !== "") {
+    const user = await UserModel.findById(req.user.id)
+
+    const imageId = user.avatar.public_id
+
+    await cloudinary.v2.uploader.destroy(imageId)
+
+    const myCloud = await cloudinary.v2.uploader.upload(req.body.avatar, {
+      folders: "avatars",
+      width: 150,
+      crop: "scale",
+    })
+
+    newUserData.avatar = {
+      public_id: myCloud.public_id,
+      url: myCloud.secure_url,
+    }
   }
 
   const user = await UserModel.findByIdAndUpdate(req.user.id, newUserData, {
@@ -212,9 +237,8 @@ export const updateUserRole = catchAsyncError(async (req, res, next) => {
     name: req.body.name,
     role: req.body.role,
   }
-  console.log(newUserData)
 
-  const user = await UserModel.findByIdAndUpdate(req.params.id, newUserData, {
+  await UserModel.findByIdAndUpdate(req.params.id, newUserData, {
     new: true,
     runValidators: true,
     useFindAndModify: false,
@@ -235,10 +259,14 @@ export const deleteUser = catchAsyncError(async (req, res, next) => {
     )
   }
 
+  const imageId = user.avatar.public_id
+
+  await cloudinary.v2.uploader.destroy(imageId)
+
   await user.remove()
 
   res.status(200).json({
     success: true,
-    message: 'Delete User successfully',
+    message: "Delete User successfully",
   })
 })

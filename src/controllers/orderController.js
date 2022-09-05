@@ -1,7 +1,7 @@
-import { OrderModel } from '../models/orderModel.js'
-import { ProductModel } from '../models/productModel.js'
-import catchAsyncError from '../middlewares/catchAsyncError.js'
-import ErrorHander from '../utils/errorHander.js'
+import { OrderModel } from "../models/orderModel.js"
+import { ProductModel } from "../models/productModel.js"
+import catchAsyncError from "../middlewares/catchAsyncError.js"
+import ErrorHander from "../utils/errorHander.js"
 
 // Create New Order
 export const newOrder = catchAsyncError(async (req, res, next) => {
@@ -9,6 +9,7 @@ export const newOrder = catchAsyncError(async (req, res, next) => {
     shippingInfo,
     orderItems,
     paymentInfo,
+    itemsPrice,
     taxPrice,
     shippingPrice,
     totalPrice,
@@ -18,6 +19,7 @@ export const newOrder = catchAsyncError(async (req, res, next) => {
     shippingInfo,
     orderItems,
     paymentInfo,
+    itemsPrice,
     taxPrice,
     shippingPrice,
     totalPrice,
@@ -34,12 +36,12 @@ export const newOrder = catchAsyncError(async (req, res, next) => {
 // Get Single Order
 export const getSingleOrder = catchAsyncError(async (req, res, next) => {
   const order = await OrderModel.findById(req.params.id).populate(
-    'user',
-    'name email'
+    "user",
+    "name email"
   )
 
   if (!order) {
-    return next(new ErrorHander('Order not found with this Id', 404))
+    return next(new ErrorHander("Order not found with this Id", 404))
   }
 
   res.status(200).json({
@@ -78,20 +80,36 @@ export const updateOrder = catchAsyncError(async (req, res, next) => {
   const order = await OrderModel.findById(req.params.id)
 
   if (!order) {
-    return next(new ErrorHander('Order not found with this Id'), 404)
+    return next(new ErrorHander("Order not found with this Id"), 404)
   }
 
-  if (order.orderStatus === 'Delivered') {
-    return next(new ErrorHander('You have already delivered this order', 400))
+  if (order.orderStatus === "Delivered") {
+    return next(new ErrorHander("You have already delivered this order", 400))
   }
 
-  order.orderItems.forEach(async (order) => {
-    await updateStock(order.product, order.quantity)
-  })
+  if (req.body.status === "Shipped") {
+    for (const item of order.orderItems) {
+      const product = await ProductModel.findById(item.product)
+      if (product.Stock === 0) {
+        return next(new ErrorHander(`${product.name} is out of Stock`, 404))
+      }
+      if (item.quantity > product.Stock) {
+        return next(
+          new ErrorHander(
+            `Quantity of ${product.name} is higher than in the Stock`,
+            404
+          )
+        )
+      }
+    }
+    order.orderItems.forEach(async (order) => {
+      await updateStock(order.product, order.quantity)
+    })
+  }
 
   order.orderStatus = req.body.status
 
-  if (req.body.status === 'Delivered') {
+  if (req.body.status === "Delivered") {
     order.deliveredAt = Date.now()
   }
 
@@ -115,7 +133,7 @@ export const deleteOrder = catchAsyncError(async (req, res, next) => {
   const order = await OrderModel.findById(req.params.id)
 
   if (!order) {
-    return next(new ErrorHander('Order not found with this Id', 404))
+    return next(new ErrorHander("Order not found with this Id", 404))
   }
 
   await order.remove()
