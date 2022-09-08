@@ -77,9 +77,7 @@ export const forgotPassword = catchAsyncError(async (req, res, next) => {
 
   await user.save({ validateBeforeSave: false })
 
-  const resetPasswordUrl = `${req.protocol}://${req.get(
-    "host"
-  )}/password/reset/${resetToken}`
+  const resetPasswordUrl = `${env.FRONT_END_URL}/api/v1/password/reset/${resetToken}`
 
   const message = `Your password reset token is: - \n\n${resetPasswordUrl} \n\nIf you not requested this email then, please ignore it.`
 
@@ -179,14 +177,14 @@ export const updateUserProfile = catchAsyncError(async (req, res, next) => {
   }
 
   if (req.body.avatar !== "") {
-    const user = await UserModel.findById(req.user.id)
+    const user = await UserModel.findById(req.user._id)
 
     const imageId = user.avatar.public_id
 
     await cloudinary.v2.uploader.destroy(imageId)
 
     const myCloud = await cloudinary.v2.uploader.upload(req.body.avatar, {
-      folders: "avatars",
+      folder: "avatars",
       width: 150,
       crop: "scale",
     })
@@ -197,7 +195,7 @@ export const updateUserProfile = catchAsyncError(async (req, res, next) => {
     }
   }
 
-  const user = await UserModel.findByIdAndUpdate(req.user.id, newUserData, {
+  const user = await UserModel.findByIdAndUpdate(req.user._id, newUserData, {
     new: true,
     runValidators: true,
     useFindAndModify: false,
